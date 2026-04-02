@@ -22,7 +22,12 @@ public class GroqAILogicController : MonoBehaviour
     private IEnumerator PostRequest(string prompt, string contextInfo, Action<string> onSuccess, Action<string> onError)
     {
         string systemPrompt = $@"You are a game AI that modifies dynamic obstacles. 
-The user will give you a description of an object to spawn or modify. 
+The user can request ANY object to spawn or modify.
+
+If the object is common (box, ladder, platform), use simple shapes.
+If the object is complex (dragon, car), still generate a valid object representation.
+
+Always spread multiple items horizontally and ensure valid placement. 
 Current Context: {contextInfo}
 
 You must return ONLY a JSON object with the following root fields:

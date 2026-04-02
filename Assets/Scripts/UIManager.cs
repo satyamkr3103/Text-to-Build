@@ -8,7 +8,6 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
     public VoiceInputManager voiceManager;
-    public RequiredWordSystem wordSystem;
     [Header("UI References")]
     public TMP_InputField promptInput;
     public Button submitButton;
@@ -71,13 +70,6 @@ public class UIManager : MonoBehaviour
         if (!guardrails.ValidatePrompt(prompt, out string errorMsg))
         {
             ShowStatus(errorMsg, Color.red);
-            return;
-        }
-
-        // 2. We don't consume energy yet! We wait for the LLM to tell us the cost.
-        if (!wordSystem.ContainsRequiredWord(prompt, out string usedWord))
-        {
-            ShowStatus("⚠ You must use one of the required words!", Color.red);
             return;
         }
 

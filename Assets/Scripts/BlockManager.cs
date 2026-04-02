@@ -2,9 +2,17 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 
 public class BlockManager : MonoBehaviour
 {
+    [System.Serializable]
+    public class PrefabMapping
+    {
+        public string name;
+        public GameObject prefab;
+    }
+
     public static BlockManager Instance { get; private set; }
 
     [Tooltip("Maximum allowed blocks to prevent performance issues and abuse.")]
@@ -13,12 +21,23 @@ public class BlockManager : MonoBehaviour
     [Tooltip("Default material to apply to procedural blocks if none is specified.")]
     public Material defaultProceduralMaterial;
 
+    public List<PrefabMapping> prefabList;
+    private Dictionary<string, GameObject> prefabDict;
+
     private int currentBlockCount = 0;
 
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        // 🔥 INIT PREFAB DICTIONARY
+        prefabDict = new Dictionary<string, GameObject>();
+
+        foreach (var item in prefabList)
+        {
+            prefabDict[item.name.ToLower()] = item.prefab;
+        }
     }
 
     public bool CanPlaceBlock()
@@ -67,7 +86,24 @@ public class BlockManager : MonoBehaviour
         }
 
         string searchTerm = string.IsNullOrEmpty(req.requestedSpawnName) ? "cube" : req.requestedSpawnName.ToLower().Replace(" ", "-");
+        string name = req.requestedSpawnName.ToLower();
 
+        // 🔥 1. TRY PREFAB FIRST
+        foreach (var key in prefabDict.Keys)
+        {
+            if (name.Contains(key))
+            {
+                GameObject obj = Instantiate(prefabDict[key]);
+
+                obj.transform.position = new Vector3(req.position.x, req.position.y, 0);
+
+                SetupSpawnedObject(obj, req);
+
+                currentBlockCount++;
+                onSuccess?.Invoke("");
+                yield break;
+            }
+        }
         // Procedural intercept for specific dynamic objects: skip images, build natively
         if (searchTerm == "spring" || searchTerm == "trampoline" || searchTerm == "water" || searchTerm == "conveyor"
             || searchTerm == "vine" || searchTerm == "rope" || searchTerm == "zipline")
@@ -153,13 +189,22 @@ public class BlockManager : MonoBehaviour
                 SpriteRenderer sr = newGameObj.AddComponent<SpriteRenderer>();
                 sr.sprite = newSprite;
 
-                // Always add a BoxCollider2D for all spawned sprite objects
-                BoxCollider2D bc = newGameObj.AddComponent<BoxCollider2D>();
-                if (req.isLadder)
+                // Add a polygon collider for the visible sprite
+                newGameObj.AddComponent<PolygonCollider2D>();
+
+                // Only add a box collider for special interaction cases
+                if (req.isLadder || req.isHazard)
                 {
-                    // Ladders are pure trigger zones — player walks through and climbs
-                    bc.isTrigger = true;
-                    try { newGameObj.tag = "Ladder"; } catch (UnityEngine.UnityException) { }
+                    BoxCollider2D bc = newGameObj.AddComponent<BoxCollider2D>();
+                    bc.size = sr.sprite.bounds.size;
+                    bc.offset = sr.sprite.bounds.center;
+                    bc.size *= 0.95f;
+
+                    if (req.isLadder)
+                    {
+                        bc.isTrigger = true;
+                        try { newGameObj.tag = "Ladder"; } catch (UnityEngine.UnityException) { }
+                    }
                 }
 
                 DynamicObstacle dynObs = newGameObj.AddComponent<DynamicObstacle>();
@@ -183,7 +228,30 @@ public class BlockManager : MonoBehaviour
             }
         }
     }
+    void SetupSpawnedObject(GameObject obj, SingleModificationRequest req)
+    {
+        // Collider safety
+        if (obj.GetComponent<Collider2D>() == null)
+            obj.AddComponent<BoxCollider2D>();
 
+        // Rigidbody
+        Rigidbody2D rb = obj.GetComponent<Rigidbody2D>();
+        if (rb == null)
+            rb = obj.AddComponent<Rigidbody2D>();
+
+        rb.gravityScale = 0;
+        rb.freezeRotation = true;
+        rb.isKinematic = true;
+
+        // Core systems
+        obj.AddComponent<DynamicObstacle>().ApplyModifications(JsonUtility.ToJson(req));
+        obj.AddComponent<DraggableObject>();
+        obj.AddComponent<BlockLifetime>();
+        obj.AddComponent<SnapToGround>();
+        obj.AddComponent<SnapToEdge>();
+
+        NudgeOutOfOverlap(obj);
+    }
     private void SpawnFallbackShape(SingleModificationRequest req, Action<string> onSuccess)
     {
         PrimitiveType pt = PrimitiveType.Cube;

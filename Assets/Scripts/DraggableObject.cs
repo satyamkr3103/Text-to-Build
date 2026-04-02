@@ -3,66 +3,126 @@ using UnityEngine;
 public class DraggableObject : MonoBehaviour
 {
     private bool isDragging = true;
-    private float dragTime = 5f;
-    private float timer;
+
+    private GameObject ghost;
+    private SpriteRenderer ghostRenderer;
+    private SpriteRenderer originalRenderer;
     private Rigidbody2D rb;
+    private Collider2D ownCollider;
+
+    public Color validColor = new Color(0, 1, 0, 0.5f);   // green transparent
+    public Color invalidColor = new Color(1, 0, 0, 0.5f); // red transparent
 
     void Start()
     {
-        timer = dragTime;
         rb = GetComponent<Rigidbody2D>();
+        ownCollider = GetComponent<Collider2D>();
+        originalRenderer = GetComponent<SpriteRenderer>();
+
         if (rb != null)
         {
             rb.isKinematic = true;
             rb.freezeRotation = true;
         }
+
+        if (ownCollider != null)
+            ownCollider.enabled = false;
+
+        CreateGhost();
+    }
+
+    void CreateGhost()
+    {
+        ghost = new GameObject("GhostPreview");
+
+        ghostRenderer = ghost.AddComponent<SpriteRenderer>();
+
+        if (originalRenderer != null)
+        {
+            ghostRenderer.sprite = originalRenderer.sprite;
+            ghostRenderer.sortingOrder = originalRenderer.sortingOrder + 1;
+            originalRenderer.enabled = false; // hide real object while dragging
+        }
+
+        ghostRenderer.color = validColor;
     }
 
     void Update()
     {
-        if (isDragging)
-        {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mousePos.z = 0;
-            transform.position = mousePos;
+        if (!isDragging) return;
+        if (Camera.main == null) return;
 
-            // 🔥 LEFT CLICK to place
-            if (Input.GetMouseButtonDown(0))
-            {
-                PlaceObject();
-            }
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePos.z = 0;
+
+        ghost.transform.position = mousePos;
+
+        bool valid = SnapPreview();
+        ghostRenderer.color = valid ? validColor : invalidColor;
+
+        // Left click = place object at ghost position
+        if (Input.GetMouseButtonDown(0))
+        {
+            PlaceObject();
         }
     }
-    void PlaceObject()
+
+    bool SnapPreview()
     {
-        isDragging = false;
+        Vector3 originalPos = transform.position;
+        transform.position = ghost.transform.position;
 
-        if (rb != null)
-            rb.bodyType = RigidbodyType2D.Static;
-
-        // 🔥 Edge snap first
         SnapToEdge edge = GetComponent<SnapToEdge>();
         if (edge != null)
             edge.Snap();
 
-        // 🔽 Then ground snap (fallback)
         SnapToGround ground = GetComponent<SnapToGround>();
         if (ground != null)
-            ground.Snap();
-
-        GetComponent<BlockLifetime>().StartLifetime();
-    }
-    void CreateSupport()
-    {
-        Vector3 pos = transform.position;
-
-        for (int i = 0; i < 5; i++)
         {
-            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
-
-            block.transform.position = new Vector3(pos.x, pos.y - i - 1, 0);
-
-            block.AddComponent<BoxCollider2D>();
+            bool snapped = ground.Snap();
+            if (!snapped)
+            {
+                transform.position = originalPos;
+                return false;
+            }
         }
+
+        ghost.transform.position = transform.position;
+        transform.position = originalPos;
+        return true;
+    }
+
+    void PlaceObject()
+    {
+        isDragging = false;
+        transform.position = ghost.transform.position;
+
+        if (originalRenderer != null)
+            originalRenderer.enabled = true;
+
+        if (ownCollider != null)
+            ownCollider.enabled = true;
+
+        Destroy(ghost);
+
+        if (rb != null)
+            rb.bodyType = RigidbodyType2D.Static;
+
+        BlockLifetime lifetime = GetComponent<BlockLifetime>();
+        if (lifetime != null)
+            lifetime.StartLifetime();
+    }
+
+    bool IsValidPlacement()
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(ghost.transform.position, 0.3f);
+
+        foreach (Collider2D hit in hits)
+        {
+            if (hit == null || hit.transform == transform) continue;
+            return false;
+        }
+
+        return true;
     }
 }

@@ -149,7 +149,7 @@ Transform:
   m_GameObject: {fileID: 73674143}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 21.7, y: 7.4294, z: -0.058306813}
+  m_LocalPosition: {x: 21.7, y: 7.48, z: -0.058306813}
   m_LocalScale: {x: 8.941988, y: 5.998761, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4950,7 +4950,7 @@ GameObject:
   - component: {fileID: 1609840187}
   - component: {fileID: 1609840188}
   - component: {fileID: 1609840189}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Ground (3)
   m_TagString: Ground
   m_Icon: {fileID: 0}
@@ -5903,6 +5903,7 @@ GameObject:
   - component: {fileID: 1912765575}
   - component: {fileID: 1912765574}
   - component: {fileID: 1912765576}
+  - component: {fileID: 1912765577}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -5924,6 +5925,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxBlocks: 50
   defaultProceduralMaterial: {fileID: 2100000, guid: 494946a8d349c9944ba2c4fa4ea48231, type: 2}
+  prefabList: []
 --- !u!114 &1912765569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5963,7 +5965,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   voiceManager: {fileID: 1912765575}
-  wordSystem: {fileID: 1912765574}
   promptInput: {fileID: 1479974374}
   submitButton: {fileID: 853384956}
   energySlider: {fileID: 1521183585}
@@ -6060,6 +6061,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rayDistance: 5
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 8
+--- !u!114 &1912765577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1912765567}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c35facf5d7be0ac409a12c83f4e88b73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  snapDistance: 1.5
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
